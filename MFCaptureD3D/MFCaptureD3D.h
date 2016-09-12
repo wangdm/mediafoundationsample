@@ -26,6 +26,10 @@
 #include <ksmedia.h>
 #include <Dbt.h>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
+
 template <class T> void SafeRelease(T **ppT)
 {
     if (*ppT)
@@ -35,6 +39,7 @@ template <class T> void SafeRelease(T **ppT)
     }
 }
 
+#include "VideoAttribute.h"
 
 #include "device.h"
 #include "preview.h"

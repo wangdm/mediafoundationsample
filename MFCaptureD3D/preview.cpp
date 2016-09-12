@@ -13,6 +13,7 @@
 
 #include "MFCaptureD3D.h"
 #include <shlwapi.h>
+#include "VideoAttribute.h"
 
 //-------------------------------------------------------------------
 //  CreateInstance
@@ -289,6 +290,8 @@ HRESULT CPreview::TryMediaType(IMFMediaType *pType)
 
     if (bFound)
     {
+
+		hr = GetVideoAttribute(pType);
         hr = m_draw.SetVideoType(pType);
     }
 
@@ -336,6 +339,57 @@ HRESULT CPreview::SetDevice(IMFActivate *pActivate)
             );
     }
 
+	IMFPresentationDescriptor* presentationDescriptor;
+	hr = pSource->CreatePresentationDescriptor(&presentationDescriptor);
+	if (SUCCEEDED(hr))
+	{
+		DWORD dwCount = 0;
+		presentationDescriptor->GetStreamDescriptorCount(&dwCount);
+		for (DWORD i = 0; i < dwCount; i++)
+		{
+			BOOL bSelect;
+			IMFStreamDescriptor *pStreamDescriptor = NULL;
+			hr = presentationDescriptor->GetStreamDescriptorByIndex(i, &bSelect, &pStreamDescriptor);
+			if (SUCCEEDED(hr) && bSelect==TRUE)
+			{
+				IMFMediaTypeHandler *pMediaTypeHandler = NULL;
+				hr = pStreamDescriptor->GetMediaTypeHandler(&pMediaTypeHandler);
+				if (!SUCCEEDED(hr))
+				{
+					SafeRelease(&pStreamDescriptor);
+				}
+				DWORD dwMediaTypeCount = 0;
+				hr = pMediaTypeHandler->GetMediaTypeCount(&dwMediaTypeCount);
+				for (DWORD j = 0; j < dwMediaTypeCount;j++)
+				{
+					IMFMediaType * pMediaType = NULL;
+					hr = pMediaTypeHandler->GetMediaTypeByIndex(j, &pMediaType);
+					if (SUCCEEDED(hr))
+					{
+						UINT32 uWidth, uHeight, uNummerator, uDenominator;
+						char formatName[5] = { 0 };
+						GUID subType;
+						pMediaType->GetGUID(MF_MT_SUBTYPE, &subType);
+						formatName[0] = ((char *)(&subType.Data1))[0];
+						formatName[1] = ((char *)(&subType.Data1))[1];
+						formatName[2] = ((char *)(&subType.Data1))[2];
+						formatName[3] = ((char *)(&subType.Data1))[3];
+						MFGetAttributeSize(pMediaType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
+						MFGetAttributeRatio(pMediaType, MF_MT_FRAME_RATE, &uNummerator, &uDenominator);
+						if (uWidth==1280 && uHeight==960 && uNummerator==30 &&m_draw.IsFormatSupported(subType))
+						{
+							pMediaTypeHandler->SetCurrentMediaType(pMediaType);
+						}
+
+					}
+					SafeRelease(&pMediaType);
+				}
+				SafeRelease(&pMediaTypeHandler);
+			}
+			SafeRelease(&pStreamDescriptor);
+		}
+	}
+	SafeRelease(&presentationDescriptor);
 
     //
     // Create the source reader.
@@ -375,11 +429,16 @@ HRESULT CPreview::SetDevice(IMFActivate *pActivate)
     {
         for (DWORD i = 0; ; i++)
         {
-            hr = m_pReader->GetNativeMediaType(
-                (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
-                i,
-                &pType
-                );
+//             hr = m_pReader->GetNativeMediaType(
+//                 (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+//                 i,
+//                 &pType
+//                 );
+			hr = m_pReader->GetCurrentMediaType(
+				(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+				&pType
+				);
+
 
             if (FAILED(hr)) { break; }
 
@@ -394,6 +453,8 @@ HRESULT CPreview::SetDevice(IMFActivate *pActivate)
             }
         }
     }
+	//Init Codec
+	InitCodec();
 
     if (SUCCEEDED(hr))
     {
@@ -427,6 +488,80 @@ HRESULT CPreview::SetDevice(IMFActivate *pActivate)
     LeaveCriticalSection(&m_critsec);
     return hr;
 }
+
+
+HRESULT CPreview::GetVideoAttribute(IMFMediaType *pType) {
+
+	HRESULT hr = S_OK;
+	GUID subtype = { 0 };
+	MFRatio PAR = { 0 };
+	LONG lStride = 0;
+
+	// Get the frame format.
+	hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
+	m_videoAttribute.m_dwFormat = (DWORD)subtype.Data1;
+
+	// Get the frame size.
+	hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &m_videoAttribute.m_uWidth, &m_videoAttribute.m_uHeight);
+
+	// Get the interlace mode. Default: assume progressive.
+	m_videoAttribute.m_bInterlace = MFGetAttributeUINT32(pType, MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+
+	hr = MFGetAttributeRatio(pType, MF_MT_FRAME_RATE, (UINT32*)&PAR.Numerator, (UINT32*)&PAR.Denominator);
+	if (SUCCEEDED(hr))
+	{
+		m_videoAttribute.m_uFps = PAR.Numerator / PAR.Denominator;
+	}
+
+
+	// Try to get the default stride from the media type.
+	hr = pType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+	if (FAILED(hr))
+	{
+		// Attribute not set. Try to calculate the default stride.
+		hr = MFGetStrideForBitmapInfoHeader(subtype.Data1, m_videoAttribute.m_uWidth, &lStride);
+	}
+	if (SUCCEEDED(hr))
+	{
+		m_videoAttribute.m_uStride = lStride;
+	}
+
+	return hr;
+}
+
+
+HRESULT CPreview::InitCodec() {
+
+	HRESULT hr = S_OK;
+
+	m_codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+	if (m_codec==NULL)
+	{
+		return !S_OK;
+	}
+
+	m_codecContext = avcodec_alloc_context3(m_codec);
+
+	m_codecContext->width = (int)m_videoAttribute.m_uWidth;
+	m_codecContext->height = (int)m_videoAttribute.m_uHeight;
+	m_codecContext->framerate.num = (int)m_videoAttribute.m_uFps;
+	m_codecContext->framerate.den = (int)1;
+	m_codecContext->time_base.num = (int)1;
+	m_codecContext->time_base.den = (int)m_videoAttribute.m_uFps;
+	m_codecContext->gop_size = (int)m_videoAttribute.m_uFps;
+	m_codecContext->max_b_frames = 1;
+	m_codecContext->pix_fmt = AV_PIX_FMT_RGB24;
+
+	m_codecContext->bit_rate = 4000000;
+
+	int ret = avcodec_open2(m_codecContext, m_codec, NULL);
+	if(ret<0){
+	}
+
+
+	return S_OK;
+}
+
 
 
 

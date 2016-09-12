@@ -136,10 +136,12 @@ BOOL InitializeApplication()
 
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
-    if (SUCCEEDED(hr))
-    {
-        hr = MFStartup(MF_VERSION);
-    }
+	if (SUCCEEDED(hr))
+	{
+		hr = MFStartup(MF_VERSION);
+	}
+
+	avcodec_register_all();
 
     return (SUCCEEDED(hr));
 }

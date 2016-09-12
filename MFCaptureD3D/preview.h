@@ -49,6 +49,8 @@ public:
     }
 
     HRESULT       SetDevice(IMFActivate *pActivate);
+	HRESULT       InitCodec();
+	HRESULT       GetVideoAttribute(IMFMediaType *pType);
     HRESULT       CloseDevice();
     HRESULT       ResizeVideo(WORD width, WORD height);
     HRESULT       CheckDeviceLost(DEV_BROADCAST_HDR *pHdr, BOOL *pbDeviceLost);
@@ -77,4 +79,9 @@ protected:
 
     WCHAR                   *m_pwszSymbolicLink;
     UINT32                  m_cchSymbolicLink;
+
+	VideoAttribute          m_videoAttribute;
+
+	AVCodec					*m_codec;
+	AVCodecContext          *m_codecContext;
 };
