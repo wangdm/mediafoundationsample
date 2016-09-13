@@ -191,6 +191,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DlgChooseDevice.cpp" />
+    <ClCompile Include="DlgVideoInformation.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="preview.cpp" />
     <ClCompile Include="winmain.cpp" />
@@ -198,6 +200,7 @@
   <ItemGroup>
     <ClInclude Include="BufferLock.h" />
     <ClInclude Include="device.h" />
+    <ClInclude Include="dialog.h" />
     <ClInclude Include="MFCaptureD3D.h" />
     <ClInclude Include="preview.h" />
     <ClInclude Include="resource.h" />

@@ -49,8 +49,9 @@ public:
     }
 
     HRESULT       SetDevice(IMFActivate *pActivate);
-	HRESULT       InitCodec();
-	HRESULT       GetVideoAttribute(IMFMediaType *pType);
+    HRESULT       InitCodec();
+    HRESULT       SetVideoAttribute(IMFMediaType *pType);
+    VideoAttribute * GetVideoAttribute();
     HRESULT       CloseDevice();
     HRESULT       ResizeVideo(WORD width, WORD height);
     HRESULT       CheckDeviceLost(DEV_BROADCAST_HDR *pHdr, BOOL *pbDeviceLost);

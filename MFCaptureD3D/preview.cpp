@@ -293,12 +293,6 @@ HRESULT CPreview::TryMediaType(IMFMediaType *pType)
                 pType
                 );
 
-            char formatName[5] = { 0 };
-            formatName[0] = ((char *)(&subtype.Data1))[0];
-            formatName[1] = ((char *)(&subtype.Data1))[1];
-            formatName[2] = ((char *)(&subtype.Data1))[2];
-            formatName[3] = ((char *)(&subtype.Data1))[3];
-
             if (SUCCEEDED(hr))
             {
                 bFound = TRUE;
@@ -310,7 +304,7 @@ HRESULT CPreview::TryMediaType(IMFMediaType *pType)
     if (bFound)
     {
 
-        hr = GetVideoAttribute(pType);
+        hr = SetVideoAttribute(pType);
         hr = m_draw.SetVideoType(pType);
     }
 
@@ -515,8 +509,12 @@ HRESULT CPreview::SetDevice(IMFActivate *pActivate)
     return hr;
 }
 
+VideoAttribute * CPreview::GetVideoAttribute() {
 
-HRESULT CPreview::GetVideoAttribute(IMFMediaType *pType) {
+    return &m_videoAttribute;
+}
+
+HRESULT CPreview::SetVideoAttribute(IMFMediaType *pType) {
 
     HRESULT hr = S_OK;
     GUID subtype = { 0 };
@@ -585,7 +583,7 @@ HRESULT CPreview::InitCodec() {
     }
 
 
-    return S_OK;
+    return hr;
 }
 
 
