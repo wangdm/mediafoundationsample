@@ -12,7 +12,6 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "MFCaptureD3D.h"
-#include "BufferLock.h"
 
 const DWORD NUM_BACK_BUFFERS = 2;
 
@@ -396,7 +395,7 @@ HRESULT DrawDevice::CreateSwapChains()
 // Draw the video frame.
 //-------------------------------------------------------------------
 
-HRESULT DrawDevice::DrawFrame(IMFMediaBuffer *pBuffer)
+HRESULT DrawDevice::DrawFrame(BYTE * data, LONG lStride)
 {
     if (m_convertFn == NULL)
     {
@@ -404,8 +403,6 @@ HRESULT DrawDevice::DrawFrame(IMFMediaBuffer *pBuffer)
     }
 
     HRESULT hr = S_OK;
-    BYTE *pbScanline0 = NULL;
-    LONG lStride = 0;
     D3DLOCKED_RECT lr;
 
     IDirect3DSurface9 *pSurf = NULL;
@@ -416,16 +413,8 @@ HRESULT DrawDevice::DrawFrame(IMFMediaBuffer *pBuffer)
         return S_OK;
     }
 
-    VideoBufferLock buffer(pBuffer);    // Helper object to lock the video buffer.
 
     hr = TestCooperativeLevel();
-
-    if (FAILED(hr)) { goto done; }
-
-    // Lock the video buffer. This method returns a pointer to the first scan
-    // line in the image, and the stride in bytes.
-
-    hr = buffer.LockBuffer(m_lDefaultStride, m_height, &pbScanline0, &lStride);
 
     if (FAILED(hr)) { goto done; }
 
@@ -445,7 +434,7 @@ HRESULT DrawDevice::DrawFrame(IMFMediaBuffer *pBuffer)
     m_convertFn(
         (BYTE*)lr.pBits,
         lr.Pitch,
-        pbScanline0,
+		data,
         lStride,
         m_width,
         m_height

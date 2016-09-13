@@ -69,7 +69,7 @@ public:
     void    DestroyDevice();
 
     HRESULT SetVideoType(IMFMediaType *pType);
-    HRESULT DrawFrame(IMFMediaBuffer *pBuffer);
+    HRESULT DrawFrame(BYTE * data, LONG lStride);
 
     // What video formats we accept
     BOOL     IsFormatSupported(REFGUID subtype) const;
