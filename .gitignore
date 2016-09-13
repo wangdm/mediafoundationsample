@@ -30,3 +30,6 @@
 *.sdf
 *.opensdf
 Debug
+.vs
+*.pdb
+*.ilk
