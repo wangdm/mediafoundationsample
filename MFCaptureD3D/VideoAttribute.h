@@ -6,7 +6,8 @@ class VideoAttribute
 {
 public:
 
-	DWORD  m_dwFormat = 0;
+	DWORD  m_dwFmtName = 0;
+    INT    m_iPixFmt;
 	UINT   m_uWidth;
 	UINT   m_uHeight;
 	LONG   m_uStride;

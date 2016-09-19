@@ -9,6 +9,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+#include <fstream>
+
 #include <new>
 #include <windows.h>
 #include <windowsx.h>
@@ -28,6 +31,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
 }
 
 template <class T> void SafeRelease(T **ppT)

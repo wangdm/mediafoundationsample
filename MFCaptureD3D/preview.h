@@ -50,6 +50,7 @@ public:
 
     HRESULT       SetDevice(IMFActivate *pActivate);
     HRESULT       InitCodec();
+    void          UninitCodec();
     HRESULT       SetVideoAttribute(IMFMediaType *pType);
     VideoAttribute * GetVideoAttribute();
     HRESULT       CloseDevice();
@@ -85,4 +86,7 @@ protected:
 
 	AVCodec					*m_codec;
 	AVCodecContext          *m_codecContext;
+    AVFrame                 *m_frame;
+
+    std::ofstream                 *h264file;
 };

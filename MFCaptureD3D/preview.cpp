@@ -68,7 +68,11 @@ CPreview::CPreview(HWND hVideo, HWND hEvent) :
     m_hwndEvent(hEvent),
     m_nRefCount(1),
     m_pwszSymbolicLink(NULL),
-    m_cchSymbolicLink(0)
+    m_cchSymbolicLink(0),
+    m_codec(NULL),
+    m_codecContext(NULL),
+    m_frame(NULL),
+    h264file(NULL)
 {
     InitializeCriticalSection(&m_critsec);
 }
@@ -118,6 +122,8 @@ HRESULT CPreview::CloseDevice()
     CoTaskMemFree(m_pwszSymbolicLink);
     m_pwszSymbolicLink = NULL;
     m_cchSymbolicLink = 0;
+
+    UninitCodec();
 
     LeaveCriticalSection(&m_critsec);
     return S_OK;
@@ -220,6 +226,22 @@ HRESULT CPreview::OnReadSample(
                 }
 
             }
+        }
+
+        int ret = avcodec_send_frame(m_codecContext, m_frame);
+        if (ret)
+        {
+            OutputDebugStringA("avcodec_send_frame error!\n");
+        }
+
+        AVPacket pkt;
+        av_init_packet(&pkt);
+        pkt.data = NULL;    // packet data will be allocated by the encoder
+        pkt.size = 0;
+        ret = avcodec_receive_packet(m_codecContext, &pkt);
+        if (!ret)
+        {
+            h264file->write((char *)pkt.data, pkt.size);
         }
     }
 
@@ -523,7 +545,21 @@ HRESULT CPreview::SetVideoAttribute(IMFMediaType *pType) {
 
     // Get the frame format.
     hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
-    m_videoAttribute.m_dwFormat = (DWORD)subtype.Data1;
+    m_videoAttribute.m_dwFmtName = (DWORD)subtype.Data1;
+    if (subtype.Data1 == MFVideoFormat_RGB32.Data1)
+    {
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_RGB32;
+    }else if (subtype.Data1 == MFVideoFormat_RGB24.Data1)
+    {
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_RGB24;
+    }else if (subtype.Data1 == MFVideoFormat_YUY2.Data1)
+    {
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUYV422;
+    }else if (subtype.Data1 == MFVideoFormat_NV12.Data1)
+    {
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV410P;
+    }
+    m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV410P;
 
     // Get the frame size.
     hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &m_videoAttribute.m_uWidth, &m_videoAttribute.m_uHeight);
@@ -574,7 +610,7 @@ HRESULT CPreview::InitCodec() {
     m_codecContext->time_base.den = (int)m_videoAttribute.m_uFps;
     m_codecContext->gop_size = (int)m_videoAttribute.m_uFps;
     m_codecContext->max_b_frames = 1;
-    m_codecContext->pix_fmt = AV_PIX_FMT_RGB24;
+    m_codecContext->pix_fmt = (AVPixelFormat)m_videoAttribute.m_iPixFmt;
 
     m_codecContext->bit_rate = 4000000;
 
@@ -582,8 +618,64 @@ HRESULT CPreview::InitCodec() {
     if (ret < 0) {
     }
 
+    m_frame = av_frame_alloc();
+    if (m_frame) {
+        m_frame->format = m_codecContext->pix_fmt;
+        m_frame->width = m_codecContext->width;
+        m_frame->height = m_codecContext->height;
+    }
+
+    ret = av_image_alloc(m_frame->data, m_frame->linesize, m_codecContext->width, m_codecContext->height,
+        m_codecContext->pix_fmt, 32);
+
+    /* prepare a dummy image */
+    /* Y */
+    int x, y;
+    for (y = 0; y < m_codecContext->height; y++) {
+        for (x = 0; x < m_codecContext->width; x++) {
+            m_frame->data[0][y * m_frame->linesize[0] + x] = x + y + 20 * 3;
+        }
+    }
+
+    /* Cb and Cr */
+    for (y = 0; y < m_codecContext->height / 2; y++) {
+        for (x = 0; x < m_codecContext->width / 2; x++) {
+            m_frame->data[1][y * m_frame->linesize[1] + x] = 128 + y + 20 * 2;
+            m_frame->data[2][y * m_frame->linesize[2] + x] = 64 + x + 20 * 5;
+        }
+    }
+
+    h264file = new std::ofstream();
+    h264file->open("video.h264");
 
     return hr;
+}
+
+
+void CPreview::UninitCodec() {
+
+    if (m_frame)
+    {
+        if (m_frame->data[0])
+        {
+            av_freep(&m_frame->data[0]);
+        }
+        av_frame_free(&m_frame);
+    }
+    if (m_codecContext)
+    {
+        avcodec_close(m_codecContext);
+        av_free(m_codecContext);
+        m_codecContext = NULL;
+    }
+
+    if (h264file)
+    {
+        h264file->flush();
+        h264file->close();
+        delete h264file;
+        h264file = NULL;
+    }
 }
 
 

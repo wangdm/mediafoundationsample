@@ -65,10 +65,10 @@ static void OnInitDialog(HWND hwnd)
     VideoAttribute * attr = g_pPreview->GetVideoAttribute();
 
     char str1[5] = { 0 };
-    str1[0] = ((char *)(&attr->m_dwFormat))[0];
-    str1[1] = ((char *)(&attr->m_dwFormat))[1];
-    str1[2] = ((char *)(&attr->m_dwFormat))[2];
-    str1[3] = ((char *)(&attr->m_dwFormat))[3];
+    str1[0] = ((char *)(&attr->m_dwFmtName))[0];
+    str1[1] = ((char *)(&attr->m_dwFmtName))[1];
+    str1[2] = ((char *)(&attr->m_dwFmtName))[2];
+    str1[3] = ((char *)(&attr->m_dwFmtName))[3];
     SetWindowTextA(hStatic1, str1);
 
     char str2[20];
