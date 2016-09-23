@@ -229,17 +229,20 @@ HRESULT CPreview::OnReadSample(
         }
 
         int ret = avcodec_send_frame(m_codecContext, m_frame);
-        if (ret)
-        {
-            OutputDebugStringA("avcodec_send_frame error!\n");
-        }
 
         AVPacket pkt;
         av_init_packet(&pkt);
         pkt.data = NULL;    // packet data will be allocated by the encoder
         pkt.size = 0;
-        ret = avcodec_receive_packet(m_codecContext, &pkt);
-        if (!ret)
+        int got_frame;
+        ret = avcodec_encode_video2(m_codecContext, &pkt, m_frame, &got_frame);
+        if (ret < AVERROR(EINVAL))
+        {
+            char str[260];
+            snprintf(str, 260, "avcodec_encode_video2 error with %d !\n", ret);
+            OutputDebugStringA(str);
+        }
+        if (got_frame)
         {
             h264file->write((char *)pkt.data, pkt.size);
         }
@@ -557,9 +560,9 @@ HRESULT CPreview::SetVideoAttribute(IMFMediaType *pType) {
         m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUYV422;
     }else if (subtype.Data1 == MFVideoFormat_NV12.Data1)
     {
-        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV410P;
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV420P;
     }
-    m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV410P;
+    m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV420P;
 
     // Get the frame size.
     hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &m_videoAttribute.m_uWidth, &m_videoAttribute.m_uHeight);
@@ -616,6 +619,7 @@ HRESULT CPreview::InitCodec() {
 
     int ret = avcodec_open2(m_codecContext, m_codec, NULL);
     if (ret < 0) {
+        OutputDebugStringA("open codex failed!");
     }
 
     m_frame = av_frame_alloc();
