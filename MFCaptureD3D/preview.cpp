@@ -193,6 +193,8 @@ HRESULT CPreview::OnReadSample(
     HRESULT hr = S_OK;
     IMFMediaBuffer *pBuffer = NULL;
 
+    static BOOL first = TRUE;
+
     EnterCriticalSection(&m_critsec);
 
     if (FAILED(hrStatus))
@@ -236,7 +238,7 @@ HRESULT CPreview::OnReadSample(
         pkt.size = 0;
         int got_frame;
         ret = avcodec_encode_video2(m_codecContext, &pkt, m_frame, &got_frame);
-        if (ret < AVERROR(EINVAL))
+        if (ret != 0)
         {
             char str[260];
             snprintf(str, 260, "avcodec_encode_video2 error with %d !\n", ret);
@@ -244,7 +246,17 @@ HRESULT CPreview::OnReadSample(
         }
         if (got_frame)
         {
-            h264file->write((char *)pkt.data, pkt.size);
+            if (first == TRUE)
+            {
+                if ((pkt.flags & AV_PKT_FLAG_KEY)) {
+                    first = FALSE;
+                    OutputDebugStringA("get first key frame\n");
+                    h264file->write((char *)pkt.data, pkt.size);
+                }
+            }
+            else {
+                h264file->write((char *)pkt.data, pkt.size);
+            }
         }
     }
 
@@ -597,7 +609,7 @@ HRESULT CPreview::InitCodec() {
 
     HRESULT hr = S_OK;
 
-    m_codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+    m_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
     if (m_codec == NULL)
     {
         return !S_OK;
