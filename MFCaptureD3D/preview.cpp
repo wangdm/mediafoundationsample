@@ -71,7 +71,8 @@ CPreview::CPreview(HWND hVideo, HWND hEvent) :
     m_cchSymbolicLink(0),
     m_codec(NULL),
     m_codecContext(NULL),
-    m_frame(NULL),
+    m_srcFrame(NULL),
+    m_dstFrame(NULL),
     h264file(NULL)
 {
     InitializeCriticalSection(&m_critsec);
@@ -193,7 +194,9 @@ HRESULT CPreview::OnReadSample(
     HRESULT hr = S_OK;
     IMFMediaBuffer *pBuffer = NULL;
 
-    static BOOL first = TRUE;
+    AVFrame *frame;
+
+    int ret = 0;
 
     EnterCriticalSection(&m_critsec);
 
@@ -225,19 +228,23 @@ HRESULT CPreview::OnReadSample(
 
                 if (SUCCEEDED(hr)) {
                     hr = m_draw.DrawFrame(pbScanline0, lStride);
+
+                    av_image_fill_pointers(m_srcFrame->data, (AVPixelFormat)m_srcFrame->format, m_srcFrame->height, pbScanline0, m_srcFrame->linesize);
+
+                    ret = sws_scale(m_swsContext, m_srcFrame->data, m_srcFrame->linesize, 0, m_srcFrame->height, m_dstFrame->data, m_dstFrame->linesize);
+
                 }
 
             }
         }
 
-        int ret = avcodec_send_frame(m_codecContext, m_frame);
-
+        static BOOL first = TRUE;
         AVPacket pkt;
         av_init_packet(&pkt);
         pkt.data = NULL;    // packet data will be allocated by the encoder
         pkt.size = 0;
         int got_frame;
-        ret = avcodec_encode_video2(m_codecContext, &pkt, m_frame, &got_frame);
+        ret = avcodec_encode_video2(m_codecContext, &pkt, m_dstFrame, &got_frame);
         if (ret != 0)
         {
             char str[260];
@@ -257,6 +264,10 @@ HRESULT CPreview::OnReadSample(
             else {
                 h264file->write((char *)pkt.data, pkt.size);
             }
+            char str[260];
+            snprintf(str, 260, "pkt.pts=%d pkt.dts=%d pkt.size=%d !\n", pkt.pts,pkt.dts,pkt.size);
+            OutputDebugStringA(str);
+            av_packet_unref(&pkt);
         }
     }
 
@@ -572,9 +583,11 @@ HRESULT CPreview::SetVideoAttribute(IMFMediaType *pType) {
         m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUYV422;
     }else if (subtype.Data1 == MFVideoFormat_NV12.Data1)
     {
+        m_videoAttribute.m_iPixFmt = AV_PIX_FMT_NV12;
+    }else if (subtype.Data1 == MFVideoFormat_I420.Data1)
+    {
         m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV420P;
     }
-    m_videoAttribute.m_iPixFmt = AV_PIX_FMT_YUV420P;
 
     // Get the frame size.
     hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &m_videoAttribute.m_uWidth, &m_videoAttribute.m_uHeight);
@@ -625,7 +638,7 @@ HRESULT CPreview::InitCodec() {
     m_codecContext->time_base.den = (int)m_videoAttribute.m_uFps;
     m_codecContext->gop_size = (int)m_videoAttribute.m_uFps;
     m_codecContext->max_b_frames = 1;
-    m_codecContext->pix_fmt = (AVPixelFormat)m_videoAttribute.m_iPixFmt;
+    m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 
     m_codecContext->bit_rate = 4000000;
 
@@ -634,32 +647,26 @@ HRESULT CPreview::InitCodec() {
         OutputDebugStringA("open codex failed!");
     }
 
-    m_frame = av_frame_alloc();
-    if (m_frame) {
-        m_frame->format = m_codecContext->pix_fmt;
-        m_frame->width = m_codecContext->width;
-        m_frame->height = m_codecContext->height;
+    m_dstFrame = av_frame_alloc();
+    if (m_dstFrame) {
+        m_dstFrame->format = m_codecContext->pix_fmt;
+        m_dstFrame->width = m_codecContext->width;
+        m_dstFrame->height = m_codecContext->height;
     }
+    ret = av_image_alloc(m_dstFrame->data, m_dstFrame->linesize, m_dstFrame->width, m_dstFrame->height,
+        (AVPixelFormat)m_dstFrame->format, 32);
 
-    ret = av_image_alloc(m_frame->data, m_frame->linesize, m_codecContext->width, m_codecContext->height,
-        m_codecContext->pix_fmt, 32);
-
-    /* prepare a dummy image */
-    /* Y */
-    int x, y;
-    for (y = 0; y < m_codecContext->height; y++) {
-        for (x = 0; x < m_codecContext->width; x++) {
-            m_frame->data[0][y * m_frame->linesize[0] + x] = x + y + 20 * 3;
-        }
+    m_srcFrame = av_frame_alloc();
+    if (m_srcFrame) {
+        m_srcFrame->format = (AVPixelFormat)m_videoAttribute.m_iPixFmt;
+        m_srcFrame->width = m_codecContext->width;
+        m_srcFrame->height = m_codecContext->height;
     }
+    av_image_fill_linesizes(m_srcFrame->linesize, (AVPixelFormat)m_srcFrame->format, m_srcFrame->width);
 
-    /* Cb and Cr */
-    for (y = 0; y < m_codecContext->height / 2; y++) {
-        for (x = 0; x < m_codecContext->width / 2; x++) {
-            m_frame->data[1][y * m_frame->linesize[1] + x] = 128 + y + 20 * 2;
-            m_frame->data[2][y * m_frame->linesize[2] + x] = 64 + x + 20 * 5;
-        }
-    }
+    m_swsContext = sws_getContext(m_srcFrame->width, m_srcFrame->height, (AVPixelFormat)m_srcFrame->format,
+        m_dstFrame->width, m_dstFrame->height, (AVPixelFormat)m_dstFrame->format,
+        SWS_BILINEAR, NULL, NULL, NULL);
 
     h264file = new std::ofstream();
     h264file->open("video.h264");
@@ -670,13 +677,13 @@ HRESULT CPreview::InitCodec() {
 
 void CPreview::UninitCodec() {
 
-    if (m_frame)
+    if (m_dstFrame)
     {
-        if (m_frame->data[0])
+        if (m_dstFrame->data[0])
         {
-            av_freep(&m_frame->data[0]);
+            av_freep(&m_dstFrame->data[0]);
         }
-        av_frame_free(&m_frame);
+        av_frame_free(&m_dstFrame);
     }
     if (m_codecContext)
     {

@@ -42,6 +42,15 @@ void TransformImage_YUY2(
     DWORD       dwHeightInPixels
     );
 
+void TransformImage_I420(
+    BYTE* pDst,
+    LONG dstStride,
+    const BYTE* pSrc,
+    LONG srcStride,
+    DWORD dwWidthInPixels,
+    DWORD dwHeightInPixels
+    );
+
 void TransformImage_NV12(
     BYTE* pDst, 
     LONG dstStride, 
@@ -80,7 +89,8 @@ ConversionFunction   g_FormatConversions[] =
 {
     { MFVideoFormat_RGB32, TransformImage_RGB32 },
     { MFVideoFormat_RGB24, TransformImage_RGB24 },
-    { MFVideoFormat_YUY2,  TransformImage_YUY2  },      
+    { MFVideoFormat_YUY2,  TransformImage_YUY2  },
+    { MFVideoFormat_I420,  TransformImage_I420  },
     { MFVideoFormat_NV12,  TransformImage_NV12  }
 };
 
@@ -694,6 +704,85 @@ void TransformImage_YUY2(
         pDest += lDestStride;
     }
 
+}
+
+
+//-------------------------------------------------------------------
+// TransformImage_I420
+//
+// I420 to RGB-32
+//-------------------------------------------------------------------
+
+void TransformImage_I420(
+    BYTE* pDst,
+    LONG dstStride,
+    const BYTE* pSrc,
+    LONG srcStride,
+    DWORD dwWidthInPixels,
+    DWORD dwHeightInPixels
+    )
+{
+    const BYTE* lpBitsY = pSrc;
+    const BYTE* lpBitsCb = lpBitsY + (dwHeightInPixels * srcStride);;
+    const BYTE* lpBitsCr = lpBitsCb + 1;
+
+    for (UINT y = 0; y < dwHeightInPixels; y += 2)
+    {
+        const BYTE* lpLineY1 = lpBitsY;
+        const BYTE* lpLineY2 = lpBitsY + srcStride;
+        const BYTE* lpLineCr = lpBitsCr;
+        const BYTE* lpLineCb = lpBitsCb;
+
+        LPBYTE lpDibLine1 = pDst;
+        LPBYTE lpDibLine2 = pDst + dstStride;
+
+        for (UINT x = 0; x < dwWidthInPixels; x += 2)
+        {
+            int  y0 = (int)lpLineY1[0];
+            int  y1 = (int)lpLineY1[1];
+            int  y2 = (int)lpLineY2[0];
+            int  y3 = (int)lpLineY2[1];
+            int  cb = (int)lpLineCb[0];
+            int  cr = (int)lpLineCr[0];
+
+            RGBQUAD r = ConvertYCrCbToRGB(y0, cr, cb);
+            lpDibLine1[0] = r.rgbBlue;
+            lpDibLine1[1] = r.rgbGreen;
+            lpDibLine1[2] = r.rgbRed;
+            lpDibLine1[3] = 0; // Alpha
+
+            r = ConvertYCrCbToRGB(y1, cr, cb);
+            lpDibLine1[4] = r.rgbBlue;
+            lpDibLine1[5] = r.rgbGreen;
+            lpDibLine1[6] = r.rgbRed;
+            lpDibLine1[7] = 0; // Alpha
+
+            r = ConvertYCrCbToRGB(y2, cr, cb);
+            lpDibLine2[0] = r.rgbBlue;
+            lpDibLine2[1] = r.rgbGreen;
+            lpDibLine2[2] = r.rgbRed;
+            lpDibLine2[3] = 0; // Alpha
+
+            r = ConvertYCrCbToRGB(y3, cr, cb);
+            lpDibLine2[4] = r.rgbBlue;
+            lpDibLine2[5] = r.rgbGreen;
+            lpDibLine2[6] = r.rgbRed;
+            lpDibLine2[7] = 0; // Alpha
+
+            lpLineY1 += 2;
+            lpLineY2 += 2;
+            lpLineCr += 2;
+            lpLineCb += 2;
+
+            lpDibLine1 += 8;
+            lpDibLine2 += 8;
+        }
+
+        pDst += (2 * dstStride);
+        lpBitsY += (2 * srcStride);
+        lpBitsCr += srcStride;
+        lpBitsCb += srcStride;
+    }
 }
 
 

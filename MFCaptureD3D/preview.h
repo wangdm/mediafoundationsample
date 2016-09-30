@@ -86,7 +86,10 @@ protected:
 
 	AVCodec					*m_codec;
 	AVCodecContext          *m_codecContext;
-    AVFrame                 *m_frame;
+    AVFrame                 *m_srcFrame;
+    AVFrame                 *m_dstFrame;
+
+    struct SwsContext       *m_swsContext;
 
     std::ofstream                 *h264file;
 };
