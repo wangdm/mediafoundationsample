@@ -91,5 +91,6 @@ protected:
 
     struct SwsContext       *m_swsContext;
 
-    std::ofstream                 *h264file;
+    std::ofstream           *h264file;
+    std::ofstream           *yuvfile;
 };

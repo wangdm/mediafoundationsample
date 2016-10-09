@@ -73,7 +73,8 @@ CPreview::CPreview(HWND hVideo, HWND hEvent) :
     m_codecContext(NULL),
     m_srcFrame(NULL),
     m_dstFrame(NULL),
-    h264file(NULL)
+    h264file(NULL),
+    yuvfile(NULL)
 {
     InitializeCriticalSection(&m_critsec);
 }
@@ -194,6 +195,8 @@ HRESULT CPreview::OnReadSample(
     HRESULT hr = S_OK;
     IMFMediaBuffer *pBuffer = NULL;
 
+    static int count = 0;
+
     AVFrame *frame;
 
     int ret = 0;
@@ -233,6 +236,27 @@ HRESULT CPreview::OnReadSample(
 
                     ret = sws_scale(m_swsContext, m_srcFrame->data, m_srcFrame->linesize, 0, m_srcFrame->height, m_dstFrame->data, m_dstFrame->linesize);
 
+
+                    if (count==300)
+                    {
+                        if (yuvfile)
+                        {
+                            OutputDebugStringA("write 300 frame, close file.\n");
+                            yuvfile->flush();
+                            yuvfile->close();
+                            delete yuvfile;
+                            yuvfile = NULL;
+                        }
+                    }
+                    else {
+                        int len = av_image_get_buffer_size((AVPixelFormat)m_dstFrame->format, m_dstFrame->width, m_dstFrame->height, 32);
+                        yuvfile->write((char *)m_dstFrame->data[0], len);
+                        count++;
+                        char str[260];
+                        snprintf(str, 260, "write %d byte data\n",len);
+                        OutputDebugStringA(str);
+                    }
+
                 }
 
             }
@@ -266,7 +290,7 @@ HRESULT CPreview::OnReadSample(
             }
             char str[260];
             snprintf(str, 260, "pkt.pts=%d pkt.dts=%d pkt.size=%d !\n", pkt.pts,pkt.dts,pkt.size);
-            OutputDebugStringA(str);
+            //OutputDebugStringA(str);
             av_packet_unref(&pkt);
         }
     }
@@ -668,8 +692,9 @@ HRESULT CPreview::InitCodec() {
         m_dstFrame->width, m_dstFrame->height, (AVPixelFormat)m_dstFrame->format,
         SWS_BILINEAR, NULL, NULL, NULL);
 
-    h264file = new std::ofstream();
-    h264file->open("video.h264");
+    h264file = new std::ofstream("video.h264", std::ios::binary);
+
+    yuvfile = new std::ofstream("video.yuv", std::ios::binary);
 
     return hr;
 }
@@ -698,6 +723,14 @@ void CPreview::UninitCodec() {
         h264file->close();
         delete h264file;
         h264file = NULL;
+    }
+
+    if (yuvfile)
+    {
+        yuvfile->flush();
+        yuvfile->close();
+        delete yuvfile;
+        yuvfile = NULL;
     }
 }
 
