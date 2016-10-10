@@ -235,60 +235,53 @@ HRESULT CPreview::OnReadSample(
                     ret = sws_scale(m_swsContext, m_srcFrame->data, m_srcFrame->linesize, 0, m_srcFrame->height, m_dstFrame->data, m_dstFrame->linesize);
 
 
-                    if (count==300)
+                    if (m_bYUVRecordStatus == TRUE)
                     {
-                        if (yuvfile)
-                        {
-                            LOG_INFO("write 300 frame, close file.\n");
-                            yuvfile->flush();
-                            yuvfile->close();
-                            delete yuvfile;
-                            yuvfile = NULL;
-                        }
-                    }
-                    else {
                         int len = av_image_get_buffer_size((AVPixelFormat)m_dstFrame->format, m_dstFrame->width, m_dstFrame->height, 32);
                         yuvfile->write((char *)m_dstFrame->data[0], len);
                         count++;
                         LOG_INFO("write %d byte data\n",len);
                     }
 
+					if (m_bH264RecordStatus == TRUE)
+					{
+						static BOOL first = TRUE;
+						AVPacket pkt;
+						av_init_packet(&pkt);
+						pkt.data = NULL;    // packet data will be allocated by the encoder
+						pkt.size = 0;
+						int got_frame;
+						ret = avcodec_encode_video2(m_codecContext, &pkt, m_dstFrame, &got_frame);
+						if (ret != 0)
+						{
+							LOG_ERR("avcodec_encode_video2 error with %d !\n", ret);
+						}
+
+						if (got_frame)
+						{
+							if (first == TRUE)
+							{
+								if ((pkt.flags & AV_PKT_FLAG_KEY)) {
+									first = FALSE;
+									LOG_INFO("get first key frame\n");
+									h264file->write((char *)pkt.data, pkt.size);
+								}
+							}
+							else {
+								h264file->write((char *)pkt.data, pkt.size);
+							}
+
+							LOG_DEBUG("pkt.pts=%lld pkt.dts=%lld pkt.size=%d !\n", pkt.pts, pkt.dts, pkt.size);
+							av_packet_unref(&pkt);
+						}
+
+						m_dstFrame->pts++;
+					}
                 }
 
             }
         }
 
-        static BOOL first = TRUE;
-        AVPacket pkt;
-        av_init_packet(&pkt);
-        pkt.data = NULL;    // packet data will be allocated by the encoder
-        pkt.size = 0;
-        int got_frame;
-        ret = avcodec_encode_video2(m_codecContext, &pkt, m_dstFrame, &got_frame);
-        if (ret != 0)
-        {
-            LOG_ERR("avcodec_encode_video2 error with %d !\n", ret);
-        }
-
-        if (got_frame)
-        {
-            if (first == TRUE)
-            {
-                if ((pkt.flags & AV_PKT_FLAG_KEY)) {
-                    first = FALSE;
-                    LOG_INFO("get first key frame\n");
-                    h264file->write((char *)pkt.data, pkt.size);
-                }
-            }
-            else {
-                h264file->write((char *)pkt.data, pkt.size);
-            }
-
-            LOG_DEBUG("pkt.pts=%lld pkt.dts=%lld pkt.size=%d !\n", pkt.pts, pkt.dts, pkt.size);
-            av_packet_unref(&pkt);
-        }
-
-        m_dstFrame->pts++;
     }
 
     // Request the next frame.
@@ -819,3 +812,44 @@ HRESULT CPreview::CheckDeviceLost(DEV_BROADCAST_HDR *pHdr, BOOL *pbDeviceLost)
     return S_OK;
 }
 
+
+HRESULT CPreview::StartYUVRecord() {
+	LOG_INFO("YUV Record Starting...\n");
+
+	return S_OK;
+}
+
+HRESULT CPreview::StopYUVRecord() {
+
+	LOG_INFO("YUV Record Stopping...\n");
+
+	return S_OK;
+}
+
+HRESULT CPreview::StartH264Record() {
+
+	LOG_INFO("H264 Record Starting...\n");
+
+	return S_OK;
+}
+
+HRESULT CPreview::StopH264Record() {
+
+	LOG_INFO("H264 Record Stopping...\n");
+
+	return S_OK;
+}
+
+HRESULT CPreview::StartMP4Record() {
+
+	LOG_INFO("MP4 Record Starting...\n");
+
+	return S_OK;
+}
+
+HRESULT CPreview::StopMP4Record() {
+
+	LOG_INFO("MP4 Record Stopping...\n");
+
+	return S_OK;
+}

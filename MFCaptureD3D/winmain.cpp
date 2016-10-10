@@ -45,6 +45,13 @@ void    OnDeviceChange(HWND hwnd, DEV_BROADCAST_HDR *pHdr);
 void    OnChooseDevice(HWND hwnd, BOOL bPrompt);
 void    OnVideoInformation(HWND hwnd, BOOL bPrompt);
 
+void    OnStartYUVRecord();
+void    OnStopYUVRecord();
+void    OnStartH264Record();
+void    OnStopH264Record();
+void    OnStartMP4Record();
+void    OnStopMP4Record();
+
 
 // Constants 
 const WCHAR CLASS_NAME[]  = L"MFCapture Window Class";
@@ -55,6 +62,10 @@ const WCHAR WINDOW_NAME[] = L"MFCapture Sample Application";
 
 CPreview    *g_pPreview = NULL;
 HDEVNOTIFY  g_hdevnotify = NULL;
+
+BOOL g_YUVRecordStatus = FALSE;
+BOOL g_H264RecordStatus = FALSE;
+BOOL g_MP4RecordStatus = FALSE;
 
 
 //-------------------------------------------------------------------
@@ -319,7 +330,55 @@ void OnCommand(HWND hwnd, int id, HWND /*hwndCtl*/, UINT /*codeNotify*/)
             break;
         case ID_FILE_VIDEOINFORMATION:
             OnVideoInformation(hwnd, TRUE);
-            break;
+			break;
+		case ID_REC_YUV:
+			if (g_YUVRecordStatus==TRUE)
+			{
+				OnStopYUVRecord();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_YUV, MF_BYCOMMAND, ID_REC_YUV, "Start YUV Record");
+				g_YUVRecordStatus = FALSE;
+			} 
+			else
+			{
+				OnStartYUVRecord();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_YUV, MF_BYCOMMAND, ID_REC_YUV, "Stop YUV Record");
+				g_YUVRecordStatus = TRUE;
+			}
+			break;
+		case ID_REC_H264:
+			if (g_H264RecordStatus == TRUE)
+			{
+				OnStopH264Record();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_H264, MF_BYCOMMAND, ID_REC_H264, "Start H264 Record");
+				g_H264RecordStatus = FALSE;
+			}
+			else
+			{
+				OnStartH264Record();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_H264, MF_BYCOMMAND, ID_REC_H264, "Stop H264 Record");
+				g_H264RecordStatus = TRUE;
+			}
+			break;
+		case ID_REC_MP4:
+			if (g_MP4RecordStatus = TRUE)
+			{
+				OnStopMP4Record();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_MP4, MF_BYCOMMAND, ID_REC_MP4, "Start MP4 Record");
+				g_MP4RecordStatus = FALSE;
+			}
+			else
+			{
+				OnStartMP4Record();
+				HMENU hMenu = GetMenu(hwnd);
+				ModifyMenuA(hMenu, ID_REC_MP4, MF_BYCOMMAND, ID_REC_MP4, "Stop MP4 Record");
+				g_MP4RecordStatus = TRUE;
+			}
+			break;
     }
 }
 
@@ -367,4 +426,28 @@ void ShowErrorMessage(PCWSTR format, HRESULT hrErr)
     {
         DebugBreak();
     }
+}
+
+void OnStartYUVRecord() {
+	g_pPreview->StartYUVRecord();
+}
+
+void OnStopYUVRecord() {
+	g_pPreview->StopYUVRecord();
+}
+
+void OnStartH264Record() {
+	g_pPreview->StartH264Record();
+}
+
+void OnStopH264Record() {
+	g_pPreview->StopH264Record();
+}
+
+void OnStartMP4Record() {
+	g_pPreview->StartMP4Record();
+}
+
+void OnStopMP4Record() {
+	g_pPreview->StopMP4Record();
 }

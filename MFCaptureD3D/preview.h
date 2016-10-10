@@ -51,6 +51,12 @@ public:
     HRESULT       SetDevice(IMFActivate *pActivate);
     HRESULT       InitCodec();
     void          UninitCodec();
+	HRESULT       StartYUVRecord();
+	HRESULT       StopYUVRecord();
+	HRESULT       StartH264Record();
+	HRESULT       StopH264Record();
+	HRESULT       StartMP4Record();
+	HRESULT       StopMP4Record();
     HRESULT       SetVideoAttribute(IMFMediaType *pType);
     VideoAttribute * GetVideoAttribute();
     HRESULT       CloseDevice();
@@ -93,4 +99,8 @@ protected:
 
     std::ofstream           *h264file;
     std::ofstream           *yuvfile;
+
+	BOOL					m_bYUVRecordStatus = FALSE;
+	BOOL					m_bH264RecordStatus = FALSE;
+	BOOL					m_bMP4RecordStatus = FALSE;
 };
