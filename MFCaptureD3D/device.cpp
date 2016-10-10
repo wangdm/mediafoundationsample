@@ -723,8 +723,8 @@ void TransformImage_I420(
     )
 {
     const BYTE* lpBitsY = pSrc;
-    const BYTE* lpBitsCb = lpBitsY + (dwHeightInPixels * srcStride);;
-    const BYTE* lpBitsCr = lpBitsCb + 1;
+    const BYTE* lpBitsCb = lpBitsY + (dwHeightInPixels * srcStride);
+    const BYTE* lpBitsCr = lpBitsCb + (dwHeightInPixels * srcStride) / 4;
 
     for (UINT y = 0; y < dwHeightInPixels; y += 2)
     {
@@ -771,8 +771,8 @@ void TransformImage_I420(
 
             lpLineY1 += 2;
             lpLineY2 += 2;
-            lpLineCr += 2;
-            lpLineCb += 2;
+            lpLineCr += 1;
+            lpLineCb += 1;
 
             lpDibLine1 += 8;
             lpDibLine2 += 8;
@@ -780,8 +780,8 @@ void TransformImage_I420(
 
         pDst += (2 * dstStride);
         lpBitsY += (2 * srcStride);
-        lpBitsCr += srcStride;
-        lpBitsCb += srcStride;
+        lpBitsCr += srcStride / 2;
+        lpBitsCb += srcStride / 2;
     }
 }
 
@@ -802,7 +802,7 @@ void TransformImage_NV12(
     )
 {
     const BYTE* lpBitsY = pSrc;
-    const BYTE* lpBitsCb = lpBitsY  + (dwHeightInPixels * srcStride);;
+    const BYTE* lpBitsCb = lpBitsY  + (dwHeightInPixels * srcStride);
     const BYTE* lpBitsCr = lpBitsCb + 1;
 
     for (UINT y = 0; y < dwHeightInPixels; y += 2)
