@@ -197,8 +197,6 @@ HRESULT CPreview::OnReadSample(
 
     static int count = 0;
 
-    AVFrame *frame;
-
     int ret = 0;
 
     EnterCriticalSection(&m_critsec);
@@ -241,7 +239,7 @@ HRESULT CPreview::OnReadSample(
                     {
                         if (yuvfile)
                         {
-                            OutputDebugStringA("write 300 frame, close file.\n");
+                            LOG_INFO("write 300 frame, close file.\n");
                             yuvfile->flush();
                             yuvfile->close();
                             delete yuvfile;
@@ -252,9 +250,7 @@ HRESULT CPreview::OnReadSample(
                         int len = av_image_get_buffer_size((AVPixelFormat)m_dstFrame->format, m_dstFrame->width, m_dstFrame->height, 32);
                         yuvfile->write((char *)m_dstFrame->data[0], len);
                         count++;
-                        char str[260];
-                        snprintf(str, 260, "write %d byte data\n",len);
-                        OutputDebugStringA(str);
+                        LOG_INFO("write %d byte data\n",len);
                     }
 
                 }
@@ -271,9 +267,7 @@ HRESULT CPreview::OnReadSample(
         ret = avcodec_encode_video2(m_codecContext, &pkt, m_dstFrame, &got_frame);
         if (ret != 0)
         {
-            char str[260];
-            snprintf(str, 260, "avcodec_encode_video2 error with %d !\n", ret);
-            OutputDebugStringA(str);
+            LOG_ERR("avcodec_encode_video2 error with %d !\n", ret);
         }
 
         if (got_frame)
@@ -282,16 +276,15 @@ HRESULT CPreview::OnReadSample(
             {
                 if ((pkt.flags & AV_PKT_FLAG_KEY)) {
                     first = FALSE;
-                    OutputDebugStringA("get first key frame\n");
+                    LOG_INFO("get first key frame\n");
                     h264file->write((char *)pkt.data, pkt.size);
                 }
             }
             else {
                 h264file->write((char *)pkt.data, pkt.size);
             }
-            char str[260];
-            snprintf(str, 260, "pkt.pts=%d pkt.dts=%d pkt.size=%d !\n", pkt.pts,pkt.dts,pkt.size);
-            //OutputDebugStringA(str);
+
+            LOG_DEBUG("pkt.pts=%lld pkt.dts=%lld pkt.size=%d !\n", pkt.pts, pkt.dts, pkt.size);
             av_packet_unref(&pkt);
         }
 

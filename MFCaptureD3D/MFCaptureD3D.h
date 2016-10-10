@@ -45,6 +45,27 @@ template <class T> void SafeRelease(T **ppT)
     }
 }
 
+#define LOG_ERR(var, ...) \
+    do{ \
+        char str[260]; \
+        snprintf(str, 260,"[ERROR]%s:%d -- "var, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        OutputDebugStringA(str); \
+    } while (0);
+
+#define LOG_INFO(var, ...) \
+    do{ \
+        char str[260]; \
+        snprintf(str, 260,"[INFO]%s:%d -- "var, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        OutputDebugStringA(str); \
+    } while (0);
+
+#define LOG_DEBUG(var, ...) \
+    do{ \
+        char str[260]; \
+        snprintf(str, 260,"[DEBUG]%s:%d -- "var, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        OutputDebugStringA(str); \
+    } while (0);
+
 #include "VideoAttribute.h"
 
 #include "device.h"
