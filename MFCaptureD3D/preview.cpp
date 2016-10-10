@@ -275,6 +275,7 @@ HRESULT CPreview::OnReadSample(
             snprintf(str, 260, "avcodec_encode_video2 error with %d !\n", ret);
             OutputDebugStringA(str);
         }
+
         if (got_frame)
         {
             if (first == TRUE)
@@ -293,6 +294,8 @@ HRESULT CPreview::OnReadSample(
             //OutputDebugStringA(str);
             av_packet_unref(&pkt);
         }
+
+        m_dstFrame->pts++;
     }
 
     // Request the next frame.
@@ -654,6 +657,9 @@ HRESULT CPreview::InitCodec() {
 
     m_codecContext = avcodec_alloc_context3(m_codec);
 
+    m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
+    m_codecContext->profile = FF_PROFILE_H264_HIGH;
+
     m_codecContext->width = (int)m_videoAttribute.m_uWidth;
     m_codecContext->height = (int)m_videoAttribute.m_uHeight;
     m_codecContext->framerate.num = (int)m_videoAttribute.m_uFps;
@@ -661,10 +667,18 @@ HRESULT CPreview::InitCodec() {
     m_codecContext->time_base.num = (int)1;
     m_codecContext->time_base.den = (int)m_videoAttribute.m_uFps;
     m_codecContext->gop_size = (int)m_videoAttribute.m_uFps;
-    m_codecContext->max_b_frames = 1;
-    m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 
+    m_codecContext->max_b_frames = 1;
+
+    av_opt_set(m_codecContext->priv_data, "preset", "slow", 0);
     m_codecContext->bit_rate = 4000000;
+    m_codecContext->bit_rate_tolerance = 4000000;
+    m_codecContext->rc_max_rate = 4000000;
+    m_codecContext->rc_min_rate = 4000000;
+
+    m_codecContext->qmin = 12;
+    m_codecContext->qmax = 34;
+    m_codecContext->max_qdiff = 8;
 
     int ret = avcodec_open2(m_codecContext, m_codec, NULL);
     if (ret < 0) {
