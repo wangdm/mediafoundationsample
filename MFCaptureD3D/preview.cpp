@@ -692,10 +692,6 @@ HRESULT CPreview::InitCodec() {
         m_dstFrame->width, m_dstFrame->height, (AVPixelFormat)m_dstFrame->format,
         SWS_BILINEAR, NULL, NULL, NULL);
 
-    h264file = new std::ofstream("video.h264", std::ios::binary);
-
-    yuvfile = new std::ofstream("video.yuv", std::ios::binary);
-
     return hr;
 }
 
@@ -814,28 +810,56 @@ HRESULT CPreview::CheckDeviceLost(DEV_BROADCAST_HDR *pHdr, BOOL *pbDeviceLost)
 
 
 HRESULT CPreview::StartYUVRecord() {
-	LOG_INFO("YUV Record Starting...\n");
+    LOG_INFO("YUV Record Starting...\n");
+
+    yuvfile = new std::ofstream("video.yuv", std::ios::binary);
+
+    m_bYUVRecordStatus = TRUE;
 
 	return S_OK;
 }
 
 HRESULT CPreview::StopYUVRecord() {
 
-	LOG_INFO("YUV Record Stopping...\n");
+    LOG_INFO("YUV Record Stopping...\n");
+
+    m_bYUVRecordStatus = FALSE;
+
+    if (yuvfile)
+    {
+        yuvfile->flush();
+        yuvfile->close();
+        delete yuvfile;
+        yuvfile = NULL;
+    }
 
 	return S_OK;
 }
 
 HRESULT CPreview::StartH264Record() {
 
-	LOG_INFO("H264 Record Starting...\n");
+    LOG_INFO("H264 Record Starting...\n");
+
+    h264file = new std::ofstream("video.h264", std::ios::binary);
+
+    m_bH264RecordStatus = TRUE;
 
 	return S_OK;
 }
 
 HRESULT CPreview::StopH264Record() {
 
-	LOG_INFO("H264 Record Stopping...\n");
+    LOG_INFO("H264 Record Stopping...\n");
+
+    m_bH264RecordStatus = FALSE;
+
+    if (h264file)
+    {
+        h264file->flush();
+        h264file->close();
+        delete h264file;
+        h264file = NULL;
+    }
 
 	return S_OK;
 }
