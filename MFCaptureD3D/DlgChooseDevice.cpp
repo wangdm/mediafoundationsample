@@ -60,13 +60,13 @@ static void OnInitDialog(HWND hwnd, ChooseDeviceParam *pParam)
 
     // Populate the list with the friendly names of the devices.
 
-    HWND hList = GetDlgItem(hwnd, IDC_DEVICE_LIST);
+    HWND hVideoList = GetDlgItem(hwnd, IDC_COMBO_VIDEO);
 
-    for (DWORD i = 0; i < pParam->count; i++)
+    for (DWORD i = 0; i < pParam->videoCount; i++)
     {
         WCHAR *szFriendlyName = NULL;
 
-        hr = pParam->ppDevices[i]->GetAllocatedString(
+        hr = pParam->ppVideoDevices[i]->GetAllocatedString(
             MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
             &szFriendlyName,
             NULL
@@ -77,18 +77,40 @@ static void OnInitDialog(HWND hwnd, ChooseDeviceParam *pParam)
             break;
         }
 
+        int index = ComboBox_AddString(hVideoList, szFriendlyName);
+        ComboBox_SetItemData(hVideoList, index, i);
 
-        int index = ListBox_AddString(hList, szFriendlyName);
+        CoTaskMemFree(szFriendlyName);
+    }
 
-        ListBox_SetItemData(hList, index, i);
+
+    HWND hAudioList = GetDlgItem(hwnd, IDC_COMBO_AUDIO);
+
+    for (DWORD i = 0; i < pParam->audioCount; i++)
+    {
+        WCHAR *szFriendlyName = NULL;
+
+        hr = pParam->ppAudioDevices[i]->GetAllocatedString(
+            MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
+            &szFriendlyName,
+            NULL
+            );
+
+        if (FAILED(hr))
+        {
+            break;
+        }
+
+        int index = ComboBox_AddString(hAudioList, szFriendlyName);
+        ComboBox_SetItemData(hAudioList, index, i);
 
         CoTaskMemFree(szFriendlyName);
     }
 
     // Assume no selection for now.
-    pParam->selection = (UINT32)-1;
+    pParam->videoSelection = (UINT32)-1;
 
-    if (pParam->count == 0)
+    if (pParam->videoCount == 0)
     {
         // If there are no devices, disable the "OK" button.
         EnableWindow(GetDlgItem(hwnd, IDOK), FALSE);
@@ -98,13 +120,13 @@ static void OnInitDialog(HWND hwnd, ChooseDeviceParam *pParam)
 
 static HRESULT OnOK(HWND hwnd, ChooseDeviceParam *pParam)
 {
-    HWND hList = GetDlgItem(hwnd, IDC_DEVICE_LIST);
+    HWND hList = GetDlgItem(hwnd, IDC_COMBO_VIDEO);
 
-    int sel = ListBox_GetCurSel(hList);
+    int sel = ComboBox_GetCurSel(hList);
 
     if (sel != LB_ERR)
     {
-        pParam->selection = (UINT32)ListBox_GetItemData(hList, sel);
+        pParam->videoSelection = (UINT32)ListBox_GetItemData(hList, sel);
     }
 
     return S_OK;
@@ -148,7 +170,21 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
     if (FAILED(hr)) { goto done; }
 
     // Enumerate devices.
-    hr = MFEnumDeviceSources(pAttributes, &param.ppDevices, &param.count);
+    hr = MFEnumDeviceSources(pAttributes, &param.ppVideoDevices, &param.videoCount);
+
+    if (FAILED(hr)) { goto done; }
+
+    // Ask for source type = audio capture devices.
+
+    hr = pAttributes->SetGUID(
+        MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
+        MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID
+        );
+
+    if (FAILED(hr)) { goto done; }
+
+    // Enumerate devices.
+    hr = MFEnumDeviceSources(pAttributes, &param.ppAudioDevices, &param.audioCount);
 
     if (FAILED(hr)) { goto done; }
 
@@ -168,7 +204,7 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
 
         if (result == IDOK)
         {
-            iDevice = param.selection;
+            iDevice = param.videoSelection;
         }
         else
         {
@@ -176,21 +212,21 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
         }
     }
 
-    if (!bCancel && (param.count > 0))
+    if (!bCancel && (param.videoCount > 0))
     {
         // Give this source to the CPlayer object for preview.
-        hr = g_pPreview->SetDevice(param.ppDevices[iDevice]);
+        hr = g_pPreview->SetDevice(param.ppVideoDevices[iDevice]);
     }
 
 done:
 
     SafeRelease(&pAttributes);
 
-    for (DWORD i = 0; i < param.count; i++)
+    for (DWORD i = 0; i < param.videoCount; i++)
     {
-        SafeRelease(&param.ppDevices[i]);
+        SafeRelease(&param.ppVideoDevices[i]);
     }
-    CoTaskMemFree(param.ppDevices);
+    CoTaskMemFree(param.ppVideoDevices);
 
     if (FAILED(hr))
     {

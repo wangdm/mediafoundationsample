@@ -9,9 +9,12 @@
 
 struct ChooseDeviceParam
 {
-    IMFActivate **ppDevices;    // Array of IMFActivate pointers.
-    UINT32      count;          // Number of elements in the array.
-    UINT32      selection;      // Selected device, by array index.
+    IMFActivate **ppVideoDevices;    // Array of IMFActivate pointers.
+    UINT32      videoCount;          // Number of elements in the array.
+    UINT32      videoSelection;      // Selected device, by array index.
+    IMFActivate **ppAudioDevices;    // Array of IMFActivate pointers.
+    UINT32      audioCount;          // Number of elements in the array.
+    UINT32      audioSelection;      // Selected device, by array index.
 };
 
 extern CPreview    *g_pPreview;
