@@ -129,7 +129,6 @@ EXPORTS
     av_vorbis_parse_init
     av_vorbis_parse_reset
     av_xiphlacing
-    available_bits
     avcodec_align_dimensions
     avcodec_align_dimensions2
     avcodec_alloc_context3
@@ -192,8 +191,6 @@ EXPORTS
     avcodec_set_dimensions
     avcodec_string
     avcodec_version
-    aver_isf_history
-    average_split_mvs
     avpicture_alloc
     avpicture_fill
     avpicture_free
