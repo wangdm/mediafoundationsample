@@ -18,6 +18,7 @@ struct ChooseDeviceParam
 };
 
 extern CPreview    *g_pPreview;
+extern CAudio      *g_pAudio;
 
 void ShowErrorMessage(PCWSTR format, HRESULT hrErr);
 

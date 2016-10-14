@@ -51,6 +51,10 @@ void    OnStartH264Record();
 void    OnStopH264Record();
 void    OnStartMP4Record();
 void    OnStopMP4Record();
+void    OnStartPCMRecord();
+void    OnStopPCMRecord();
+void    OnStartAACRecord();
+void    OnStopAACRecord();
 
 
 // Constants 
@@ -61,11 +65,14 @@ const WCHAR WINDOW_NAME[] = L"MFCapture Sample Application";
 // Global variables
 
 CPreview    *g_pPreview = NULL;
+CAudio      *g_pAudio = NULL;
 HDEVNOTIFY  g_hdevnotify = NULL;
 
 BOOL g_YUVRecordStatus = FALSE;
 BOOL g_H264RecordStatus = FALSE;
 BOOL g_MP4RecordStatus = FALSE;
+BOOL g_PCMRecordStatus = FALSE;
+BOOL g_AACRecordStatus = FALSE;
 
 
 //-------------------------------------------------------------------
@@ -270,10 +277,17 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT)
 
     // Create the object that manages video preview. 
     hr = CPreview::CreateInstance(hwnd, hwnd, &g_pPreview);
-
     if (FAILED(hr))
     {
         ShowErrorMessage(L"CPreview::CreateInstance failed.", hr);
+        return FALSE;
+    }
+
+    // Create the object that manages video preview. 
+    hr = CAudio::CreateInstance(&g_pAudio);
+    if (FAILED(hr))
+    {
+        ShowErrorMessage(L"CAudio::CreateInstance failed.", hr);
         return FALSE;
     }
 
@@ -378,7 +392,39 @@ void OnCommand(HWND hwnd, int id, HWND /*hwndCtl*/, UINT /*codeNotify*/)
 				ModifyMenuA(hMenu, ID_REC_MP4, MF_BYCOMMAND, ID_REC_MP4, "Stop MP4 Record");
 				g_MP4RecordStatus = TRUE;
 			}
-			break;
+            break;
+        case ID_REC_PCM:
+            if (g_PCMRecordStatus == TRUE)
+            {
+                OnStopPCMRecord();
+                HMENU hMenu = GetMenu(hwnd);
+                ModifyMenuA(hMenu, ID_REC_PCM, MF_BYCOMMAND, ID_REC_PCM, "Start PCM Record");
+                g_PCMRecordStatus = FALSE;
+            }
+            else
+            {
+                OnStartPCMRecord();
+                HMENU hMenu = GetMenu(hwnd);
+                ModifyMenuA(hMenu, ID_REC_PCM, MF_BYCOMMAND, ID_REC_PCM, "Stop PCM Record");
+                g_PCMRecordStatus = TRUE;
+            }
+            break;
+        case ID_REC_AAC:
+            if (g_AACRecordStatus == TRUE)
+            {
+                OnStopAACRecord();
+                HMENU hMenu = GetMenu(hwnd);
+                ModifyMenuA(hMenu, ID_REC_AAC, MF_BYCOMMAND, ID_REC_AAC, "Start AAC Record");
+                g_AACRecordStatus = FALSE;
+            }
+            else
+            {
+                OnStartAACRecord();
+                HMENU hMenu = GetMenu(hwnd);
+                ModifyMenuA(hMenu, ID_REC_AAC, MF_BYCOMMAND, ID_REC_AAC, "Stop AAC Record");
+                g_AACRecordStatus = TRUE;
+            }
+            break;
     }
 }
 
@@ -450,4 +496,20 @@ void OnStartMP4Record() {
 
 void OnStopMP4Record() {
 	g_pPreview->StopMP4Record();
+}
+
+void OnStartPCMRecord() {
+    g_pAudio->StartPCMRecord();
+}
+
+void OnStopPCMRecord() {
+    g_pAudio->StopPCMRecord();
+}
+
+void OnStartAACRecord() {
+    g_pAudio->StartAACRecord();
+}
+
+void OnStopAACRecord() {
+    g_pAudio->StopAACRecord();
 }

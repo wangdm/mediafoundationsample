@@ -67,8 +67,10 @@ template <class T> void SafeRelease(T **ppT)
     } while (0);
 
 #include "VideoAttribute.h"
+#include "AudioAttribute.h"
 
 #include "device.h"
+#include "audio.h"
 #include "preview.h"
 
 

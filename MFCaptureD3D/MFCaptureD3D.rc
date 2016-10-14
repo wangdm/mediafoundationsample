@@ -171,6 +171,8 @@ BEGIN
         MENUITEM "Start YUV Record",            ID_REC_YUV
         MENUITEM "Start H264 Record",           ID_REC_H264
         MENUITEM "Start MP4 Record",            ID_REC_MP4
+        MENUITEM "Start PCM Record",            ID_REC_PCM
+        MENUITEM "Start AAC Record",            ID_REC_AAC
     END
 END
 

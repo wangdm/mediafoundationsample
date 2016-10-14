@@ -149,7 +149,8 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
     HRESULT hr = S_OK;
     ChooseDeviceParam param = { 0 };
 
-    UINT iDevice = 0;   // Index into the array of devices
+    UINT iVideoDevice = 0;   // Index into the array of devices
+    UINT iAudioDevice = 0;   // Index into the array of devices
     BOOL bCancel = FALSE;
 
     IMFAttributes *pAttributes = NULL;
@@ -169,7 +170,7 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
 
     if (FAILED(hr)) { goto done; }
 
-    // Enumerate devices.
+    // Enumerate video devices.
     hr = MFEnumDeviceSources(pAttributes, &param.ppVideoDevices, &param.videoCount);
 
     if (FAILED(hr)) { goto done; }
@@ -183,7 +184,7 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
 
     if (FAILED(hr)) { goto done; }
 
-    // Enumerate devices.
+    // Enumerate audio devices.
     hr = MFEnumDeviceSources(pAttributes, &param.ppAudioDevices, &param.audioCount);
 
     if (FAILED(hr)) { goto done; }
@@ -204,7 +205,8 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
 
         if (result == IDOK)
         {
-            iDevice = param.videoSelection;
+            iVideoDevice = param.videoSelection;
+            iAudioDevice = param.audioSelection;
         }
         else
         {
@@ -215,7 +217,13 @@ void OnChooseDevice(HWND hwnd, BOOL bPrompt)
     if (!bCancel && (param.videoCount > 0))
     {
         // Give this source to the CPlayer object for preview.
-        hr = g_pPreview->SetDevice(param.ppVideoDevices[iDevice]);
+        hr = g_pPreview->SetDevice(param.ppVideoDevices[iVideoDevice]);
+    }
+
+    if (!bCancel && (param.audioCount > 0))
+    {
+        // Give this source to the CPlayer object for preview.
+        hr = g_pAudio->SetDevice(param.ppAudioDevices[iAudioDevice]);
     }
 
 done:
