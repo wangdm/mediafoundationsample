@@ -71,6 +71,7 @@ CPreview::CPreview(HWND hVideo, HWND hEvent) :
     m_cchSymbolicLink(0),
     m_codec(NULL),
     m_codecContext(NULL),
+	m_swsContext(NULL),
     m_srcFrame(NULL),
     m_dstFrame(NULL),
     h264file(NULL),
@@ -698,6 +699,18 @@ HRESULT CPreview::InitCodec() {
 
 void CPreview::UninitCodec() {
 
+	if (m_swsContext)
+	{
+		sws_freeContext(m_swsContext);
+		m_swsContext = NULL;
+	}
+
+	if (m_srcFrame)
+	{
+		av_frame_free(&m_srcFrame);
+		m_srcFrame = NULL;
+	}
+
     if (m_dstFrame)
     {
         if (m_dstFrame->data[0])
@@ -705,7 +718,9 @@ void CPreview::UninitCodec() {
             av_freep(&m_dstFrame->data[0]);
         }
         av_frame_free(&m_dstFrame);
+		m_dstFrame = NULL;
     }
+
     if (m_codecContext)
     {
         avcodec_close(m_codecContext);

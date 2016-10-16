@@ -4,10 +4,11 @@
 
 
 CAudio::CAudio() :
-    m_nRefCount(1),
-    m_pReader(NULL),
-    m_codec(NULL),
-    m_codecContext(NULL),
+	m_nRefCount(1),
+	m_pReader(NULL),
+	m_codec(NULL),
+	m_codecContext(NULL),
+	m_swrContext(NULL),
     m_srcFrame(NULL),
     m_dstFrame(NULL),
     aacfile(NULL),
@@ -150,6 +151,35 @@ HRESULT CAudio::OnReadSample(
                 {
                     pcmfile->write((char *)pBuffer, bufSize);
                 }
+
+				m_srcFrame->data[0] = pBuffer;
+				m_srcFrame->nb_samples = bufSize / (m_audioAttribute.m_uSampleBit / 8 * 2);
+				ret = swr_convert_frame(m_swrContext, m_dstFrame, m_srcFrame);
+				if (ret < 0)
+				{
+					char strerr[100];
+					av_strerror(ret, strerr, 100);
+					LOG_ERR("swr_config_frame failed with %s£¡\n", strerr);
+				}
+
+				if (m_bAACRecordStatus == TRUE)
+				{
+					AVPacket pkt;
+					av_init_packet(&pkt);
+					pkt.data = NULL;    // packet data will be allocated by the encoder
+					pkt.size = 0;
+					int got_frame;
+					ret = avcodec_encode_audio2(m_codecContext, &pkt, m_dstFrame, &got_frame);
+					if (ret < 0) {
+						fprintf(stderr, "Error encoding audio frame\n");
+						exit(1);
+					}
+
+					if (got_frame) {
+						aacfile->write((char *)pkt.data, pkt.size);
+						av_packet_unref(&pkt);
+					}
+				}
 
                 pMediaBuffer->Unlock();
             }
@@ -326,6 +356,9 @@ HRESULT CAudio::SetDevice(IMFActivate *pActivate)
             &pType
             );
 
+		GUID subType;
+		pType->GetGUID(MF_MT_SUBTYPE, &subType);
+
         UINT32 nChannels, nSamplesPerSec, nAvgBytesPerSec, nBlockAlign, wBitsPerSample, wSamplesPerBlock, uBitSize;
         pType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &nChannels);
         pType->GetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, &nAvgBytesPerSec);
@@ -338,6 +371,10 @@ HRESULT CAudio::SetDevice(IMFActivate *pActivate)
         m_audioAttribute.m_uChannel = nChannels;
         m_audioAttribute.m_uSampleBit = wBitsPerSample;
         m_audioAttribute.m_uSampleRate = nSamplesPerSec;
+		if (subType.Data1 == MFAudioFormat_Float.Data1)
+		{
+			m_audioAttribute.m_iSampleFmt = AV_SAMPLE_FMT_FLT;
+		}
     }
 
     InitCodec();
@@ -414,8 +451,8 @@ HRESULT CAudio::InitCodec() {
 
     m_codecContext->channels = m_audioAttribute.m_uChannel;
     m_codecContext->sample_rate = m_audioAttribute.m_uSampleRate;
-    m_codecContext->sample_fmt = AV_SAMPLE_FMT_FLT;
-    m_codecContext->channel_layout = av_get_default_channel_layout(m_codecContext->channels);
+    m_codecContext->sample_fmt = AV_SAMPLE_FMT_S16;
+	m_codecContext->channel_layout = AV_CH_LAYOUT_STEREO; //av_get_default_channel_layout(m_codecContext->channels);
 
     m_codecContext->bit_rate = 64000;
 
@@ -439,18 +476,53 @@ HRESULT CAudio::InitCodec() {
     int sample_size = av_samples_get_buffer_size(NULL, m_codecContext->channels, m_codecContext->frame_size, m_codecContext->sample_fmt, 0);
 
     m_dstFrame = av_frame_alloc();
-    if (m_dstFrame) {
+	if (m_dstFrame) {
+		m_dstFrame->channels = m_codecContext->channels;
+		m_dstFrame->channel_layout = m_codecContext->channel_layout;
+		m_dstFrame->sample_rate = m_codecContext->sample_rate;
+		m_dstFrame->format = m_codecContext->sample_fmt;
+		m_dstFrame->nb_samples = m_codecContext->frame_size;
     }
+	av_frame_get_buffer(m_dstFrame, 0);
 
     m_srcFrame = av_frame_alloc();
-    if (m_srcFrame) {
+	if (m_srcFrame) {
+		m_srcFrame->channels = m_audioAttribute.m_uChannel;
+		m_srcFrame->channel_layout = av_get_default_channel_layout(m_srcFrame->channels);
+		m_srcFrame->sample_rate = m_audioAttribute.m_uSampleRate;
+		m_srcFrame->format = m_audioAttribute.m_iSampleFmt;
     }
+
+	m_swrContext = swr_alloc();
+	ret = swr_config_frame(m_swrContext, m_dstFrame, m_srcFrame);
+	if (ret <0)
+	{
+		LOG_ERR("swr_config_frame failed with %d\n", ret);
+	}
+	if (!swr_is_initialized(m_swrContext))
+	{
+		ret = swr_init(m_swrContext);
+		if (ret<0)
+		{
+			LOG_ERR("swr_init failed with %d\n", ret);
+		}
+	}
 
     return hr;
 }
 
 
 void CAudio::UninitCodec() {
+
+	if (m_swrContext)
+	{
+		swr_free(&m_swrContext);
+	}
+
+	if (m_srcFrame)
+	{
+		av_frame_free(&m_srcFrame);
+	}
 
     if (m_dstFrame)
     {

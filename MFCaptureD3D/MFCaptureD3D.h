@@ -31,6 +31,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libswresample//swresample.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>

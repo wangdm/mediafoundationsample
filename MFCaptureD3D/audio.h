@@ -58,6 +58,8 @@ protected:
     AVFrame                 *m_srcFrame;
     AVFrame                 *m_dstFrame;
 
+	struct SwrContext		*m_swrContext;
+
     std::ofstream           *aacfile;
     std::ofstream           *pcmfile;
 
