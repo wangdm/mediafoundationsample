@@ -35,6 +35,8 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+
+#include <pthread.h>
 }
 
 template <class T> void SafeRelease(T **ppT)

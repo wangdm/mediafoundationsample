@@ -192,6 +192,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="audio.cpp" />
+    <ClCompile Include="bufferpipe.cpp" />
+    <ClCompile Include="bufferpool.cpp" />
     <ClCompile Include="DlgChooseDevice.cpp" />
     <ClCompile Include="DlgVideoInformation.cpp" />
     <ClCompile Include="device.cpp" />
@@ -202,6 +204,8 @@
     <ClInclude Include="audio.h" />
     <ClInclude Include="AudioAttribute.h" />
     <ClInclude Include="BufferLock.h" />
+    <ClInclude Include="bufferpipe.h" />
+    <ClInclude Include="bufferpool.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="dialog.h" />
     <ClInclude Include="MFCaptureD3D.h" />
