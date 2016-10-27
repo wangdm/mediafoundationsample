@@ -109,6 +109,7 @@
 /* Include everything */
 #endif
 
+#define HAVE_STRUCT_TIMESPEC 1
 #if defined(_UWIN)
 #   define HAVE_STRUCT_TIMESPEC 1
 #   define HAVE_SIGNAL_H        1
