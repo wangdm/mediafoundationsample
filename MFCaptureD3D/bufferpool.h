@@ -1,27 +1,6 @@
 #pragma once
 
-class Buffer {
-
-public:
-    Buffer();
-    ~Buffer();
-
-    int GetBufferSize() {
-        return size;
-    }
-
-    int Write(void *data, int size);
-
-    friend class BufferPool;
-
-private:
-    int size = 0;
-    int len = 0;
-    void *ptr = NULL;
-
-    bool used = false;
-};
-
+class Buffer;
 
 class BufferPool
 {
@@ -38,6 +17,22 @@ public:
     Buffer* GetBuffer();
     void ReleaseBuffer(Buffer * buf);
 
+	int Write(const void * data, int size);
+	int Read(void * data);
+	int Read(void * data, int size);
+
+	int GetBufferSize() {
+		return bufferSize;
+	}
+
+	int GetTotalCount() {
+		return totalCount;
+	}
+
+	int GetFreeCount() {
+		return freeCount;
+	}
+
 private:
     void Init();
     void Uninit();
@@ -45,12 +40,17 @@ private:
 
 private:
     void * ptr;
-    Buffer * buffer;
+    Buffer * bufferpool;
     bool created = false;
+
+	Buffer * head = NULL;
+	Buffer * tail = NULL;
 
     int freeCount = 0;
     int totalCount = 0;
+	int bufferSize = 0;
 
-    pthread_mutex_t mutex;
+	pthread_mutex_t poolmutex;
+	pthread_mutex_t buffermutex;
 };
 
