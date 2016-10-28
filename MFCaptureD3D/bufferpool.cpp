@@ -1,13 +1,19 @@
 
+#include <vector>
+#include <queue>
+
+using namespace std;
+
 #include "MFCaptureD3D.h"
 #include "bufferpool.h"
 
 
-class Buffer {
+class BufferImpl : public Buffer
+{
 
 public:
-	Buffer();
-	~Buffer();
+	BufferImpl();
+	~BufferImpl();
 
 	int GetBufferSize() {
 		return size;
@@ -16,7 +22,7 @@ public:
 	int Write(const void *data, int size);
 	int Read(void *data);
 
-	friend class BufferPool;
+	friend class BufferPoolImpl;
 
 private:
 	int size = 0;
@@ -24,23 +30,20 @@ private:
 	void *ptr = NULL;
 
 	bool used = false;
-
-	Buffer * next;
 };
 
 
-
-Buffer::Buffer()
+BufferImpl::BufferImpl()
 {
 }
 
 
-Buffer::~Buffer()
+BufferImpl::~BufferImpl()
 {
 }
 
 
-int Buffer::Write(const void * data, int len) {
+int BufferImpl::Write(const void * data, int len) {
 
     if (len > this->size || !data)
     {
@@ -54,7 +57,7 @@ int Buffer::Write(const void * data, int len) {
 }
 
 
-int Buffer::Read(void * data) {
+int BufferImpl::Read(void * data) {
 
 	if (!data)
 	{
@@ -67,64 +70,132 @@ int Buffer::Read(void * data) {
 }
 
 
-BufferPool::BufferPool()
+
+//////////////////////////////////////////////////////////////////////////
+// BufferPoolImpl
+//////////////////////////////////////////////////////////////////////////
+class BufferPoolImpl : public BufferPool
+{
+
+public:
+	BufferPoolImpl();
+	BufferPoolImpl(int size, int count);
+	~BufferPoolImpl();
+
+	void Create(int size, int count);
+	void Destory();
+	bool IsCreated();
+
+	Buffer* GetBuffer();
+	void ReleaseBuffer(Buffer * buf);
+
+	int Write(const void * data, int size);
+	int Read(void * data);
+	int Read(void * data, int size);
+
+	int GetBufferSize() {
+		return bufferSize;
+	}
+
+	int GetTotalCount() {
+		return totalCount;
+	}
+
+	int GetFreeCount() {
+		return freeCount;
+	}
+
+private:
+	void Init();
+	void Uninit();
+
+
+private:
+	void * ptr;
+	bool created = false;
+
+	std::vector<BufferImpl> * bufferArray;
+	std::queue<BufferImpl*> bufferQueue;
+
+	int freeCount = 0;
+	int totalCount = 0;
+	int bufferSize = 0;
+
+	pthread_mutex_t poolmutex;
+	pthread_mutex_t buffermutex;
+};
+
+
+BufferPool * BufferPool::Create(uint32_t size, uint32_t count) {
+
+	BufferPoolImpl * pool = new BufferPoolImpl();
+	if (pool)
+	{
+		pool->Create(size, count);
+	}
+
+	return pool;
+
+}
+
+
+BufferPoolImpl::BufferPoolImpl()
 {
     Init();
 }
 
 
-BufferPool::BufferPool(int size, int count)
+BufferPoolImpl::BufferPoolImpl(int size, int count)
 {
     Init();
     Create(size, count);
 }
 
 
-BufferPool::~BufferPool()
+BufferPoolImpl::~BufferPoolImpl()
 {
-    Destory();
     Uninit();
 }
 
 
-void BufferPool::Init()
+void BufferPoolImpl::Init()
 {
 	pthread_mutex_init(&poolmutex, NULL);
 	pthread_mutex_init(&buffermutex, NULL);
 }
 
 
-void BufferPool::Uninit()
+void BufferPoolImpl::Uninit()
 {
 	pthread_mutex_destroy(&poolmutex);
 	pthread_mutex_destroy(&buffermutex);
 }
 
 
-void BufferPool::Create(int size, int count)
+void BufferPoolImpl::Create(int size, int count)
 {
     pthread_mutex_lock(&poolmutex);
     if (!created && size>0 && count>0)
     {
 
-		bufferpool = new Buffer[count];
-        if (bufferpool ==NULL)
+		bufferArray = new std::vector<BufferImpl>[count];
+        if (bufferArray ==NULL)
         {
             goto failed;
         }
         ptr = malloc( size * count);
         if (ptr==NULL)
         {
-            delete bufferpool;
-			bufferpool = NULL;
+            delete bufferArray;
+			bufferArray = NULL;
             goto failed;
         }
 
         for (int i = 0; i < count; i++)
         {
-			bufferpool[i].ptr = (void *)((char *)ptr + size * i);
-			bufferpool[i].used = false;
-			bufferpool[i].size = size;
+			(*bufferArray)[i].ptr = (void *)((char *)ptr + size * i);
+			(*bufferArray)[i].used = false;
+			(*bufferArray)[i].size = size;
         }
 
         freeCount = count;
@@ -137,7 +208,7 @@ failed:
 }
 
 
-void BufferPool::Destory()
+void BufferPoolImpl::Destory()
 {
     pthread_mutex_lock(&poolmutex);
     if (created)
@@ -145,7 +216,7 @@ void BufferPool::Destory()
         int busycnt = 0;
         for (int i = 0; i < totalCount; i++)
         {
-            if (bufferpool[i].used==true)
+            if ((*bufferArray)[i].used==true)
             {
                 busycnt++;
             }
@@ -155,10 +226,10 @@ void BufferPool::Destory()
         {
         }
 
-        if (bufferpool)
+        if ((bufferArray))
         {
-            delete bufferpool;
-			bufferpool = NULL;
+            delete bufferArray;
+			bufferArray = NULL;
         }
         if (ptr)
         {
@@ -171,26 +242,28 @@ void BufferPool::Destory()
 
     }
     pthread_mutex_unlock(&poolmutex);
+
+	delete this;
 }
 
 
-bool BufferPool::IsCreated()
+bool BufferPoolImpl::IsCreated()
 {
     return created;
 }
 
 
-Buffer * BufferPool::GetBuffer()
+Buffer * BufferPoolImpl::GetBuffer()
 {
-	Buffer * buf = NULL;
+	BufferImpl * buf = NULL;
     pthread_mutex_lock(&poolmutex);
     if (created && freeCount>0)
     {
         for (int i = 0; i < totalCount; i++)
         {
-            if (bufferpool[i].used==false)
+            if ((*bufferArray)[i].used==false)
             {
-                buf = &bufferpool[i];
+                buf = &(*bufferArray)[i];
 				buf->used = true;
 				freeCount--;
                 break;
@@ -202,82 +275,106 @@ Buffer * BufferPool::GetBuffer()
 }
 
 
-void BufferPool::ReleaseBuffer(Buffer * buf)
+void BufferPoolImpl::ReleaseBuffer(Buffer * buf)
 {
     if (buf)
     {
+		BufferImpl * buffer = (BufferImpl *)buf;
         pthread_mutex_lock(&poolmutex);
-        buf->used = false;
-        buf->length = 0;
-		buf->next = NULL;
+		buffer->used = false;
+		buffer->length = 0;
         freeCount++;
         pthread_mutex_unlock(&poolmutex);
     }
 }
 
 
-int BufferPool::Write(const void * data, int len)
+int BufferPoolImpl::Write(const void * data, int len)
 {
-	Buffer *buffer = NULL;
+	BufferImpl *buffer = NULL;
 	if (data==NULL || GetBufferSize() < len)
 	{
 		return -1;
 	}
 
-	buffer = GetBuffer();
+	buffer = (BufferImpl*)GetBuffer();
 	if (buffer==NULL)
 	{
 		return -2;
 	}
 
 	pthread_mutex_lock(&buffermutex);
+	
 	buffer->Write(data, len);
-	if (head == NULL)
-	{
-		head = buffer;
-		tail = buffer;
-		head->next = tail;
-	}
+	bufferQueue.push(buffer);
+
 	pthread_mutex_unlock(&buffermutex);
 
 	return len;
 }
 
 
-int BufferPool::Read(void * data)
+int BufferPoolImpl::Read(void * data)
 {
-	if (data==NULL || head==NULL)
+	if (data==NULL)
+	{
+		return 0;
+	}
+
+	int len = 0; 
+	BufferImpl *buffer = NULL;
+
+	pthread_mutex_lock(&buffermutex);
+
+	if (!bufferQueue.empty())
+	{
+		buffer = bufferQueue.front();
+		len = buffer->Read(data);
+		bufferQueue.pop();
+	}
+
+	pthread_mutex_unlock(&buffermutex);
+
+	if (buffer)
+	{
+		ReleaseBuffer(buffer);
+	}
+
+	return len;
+}
+
+
+int BufferPoolImpl::Read(void * data, int size)
+{
+	if (data == NULL)
 	{
 		return 0;
 	}
 
 	int len = 0;
+	BufferImpl *buffer = NULL;
 
 	pthread_mutex_lock(&buffermutex);
-	Buffer *buffer = head;
-	if (head==tail)
+
+	if (!bufferQueue.empty())
 	{
-		head = tail = NULL;
+		buffer = bufferQueue.front();
+		if (buffer->length <= size)
+		{
+			len = buffer->Read(data);
+			bufferQueue.pop();
+		}
+		else {
+			buffer = NULL;
+		}
 	}
-	else
-	{
-		head = head->next;
-	}
-	len = buffer->Read(data);
+
 	pthread_mutex_unlock(&buffermutex);
 
-	ReleaseBuffer(buffer);
-
-	return len;
-}
-
-
-int BufferPool::Read(void * data, int size)
-{
-	if (data == NULL || head == NULL || size<=head->length)
+	if (buffer)
 	{
-		return 0;
+		ReleaseBuffer(buffer);
 	}
 
-	return Read(data);
+	return len;
 }

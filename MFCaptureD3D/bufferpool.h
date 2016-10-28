@@ -1,56 +1,37 @@
 #pragma once
 
-class Buffer;
+class Buffer
+{
+
+public:
+
+	virtual int GetBufferSize() = 0;
+
+	virtual int Write(const void *data, int size) = 0;
+	virtual int Read(void *data) = 0;
+
+};
+
 
 class BufferPool
 {
 
 public:
-    BufferPool();
-    BufferPool(int size, int count);
-    ~BufferPool();
 
-    void Create(int size, int count);
-    void Destory();
-    bool IsCreated();
+	static BufferPool * Create(uint32_t size, uint32_t count);
+	virtual void Destory() = 0;
+	virtual bool IsCreated() = 0;
 
-    Buffer* GetBuffer();
-    void ReleaseBuffer(Buffer * buf);
+	virtual Buffer* GetBuffer() = 0;
+	virtual void ReleaseBuffer(Buffer * buf) = 0;
 
-	int Write(const void * data, int size);
-	int Read(void * data);
-	int Read(void * data, int size);
+	virtual int Write(const void * data, int size) = 0;
+	virtual int Read(void * data) = 0;
+	virtual int Read(void * data, int size) = 0;
 
-	int GetBufferSize() {
-		return bufferSize;
-	}
+	virtual int GetBufferSize() = 0;
+	virtual int GetTotalCount() = 0;
+	virtual int GetFreeCount() = 0;
 
-	int GetTotalCount() {
-		return totalCount;
-	}
-
-	int GetFreeCount() {
-		return freeCount;
-	}
-
-private:
-    void Init();
-    void Uninit();
-
-
-private:
-    void * ptr;
-    Buffer * bufferpool;
-    bool created = false;
-
-	Buffer * head = NULL;
-	Buffer * tail = NULL;
-
-    int freeCount = 0;
-    int totalCount = 0;
-	int bufferSize = 0;
-
-	pthread_mutex_t poolmutex;
-	pthread_mutex_t buffermutex;
 };
 
