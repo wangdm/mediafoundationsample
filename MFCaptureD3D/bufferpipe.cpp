@@ -10,32 +10,78 @@ extern "C" {
 
 
 
-BufferPipe::BufferPipe()
+class BufferPipeImpl : public BufferPipe
+{
+
+public:
+	BufferPipeImpl();
+	~BufferPipeImpl();
+
+	void Create(uint32_t _size, uint32_t _flag);
+	void Destory();
+
+	uint32_t Write(const void * data, uint32_t len);
+	uint32_t Read(void * data, uint32_t len);
+
+private:
+	void Init();
+	void Uninit();
+
+private:
+	bool created = false;
+
+	void * head;
+	void * tail;
+	uint32_t size;
+	uint32_t length;
+
+	void * rptr;
+	void * wptr;
+
+	uint32_t flag;
+
+	pthread_mutex_t mutex;
+};
+
+
+BufferPipe * BufferPipe::Create(uint32_t size, uint32_t count) {
+
+	BufferPipeImpl * pipe = new BufferPipeImpl();
+	if (pipe)
+	{
+		pipe->Create(size, count);
+	}
+
+	return pipe;
+
+}
+
+
+BufferPipeImpl::BufferPipeImpl()
 {
 	Init();
 }
 
 
-BufferPipe::~BufferPipe()
+BufferPipeImpl::~BufferPipeImpl()
 {
-	Destory();
 	Uninit();
 }
 
 
-void BufferPipe::Init()
+void BufferPipeImpl::Init()
 {
 	pthread_mutex_init(&mutex, NULL);
 }
 
 
-void BufferPipe::Uninit()
+void BufferPipeImpl::Uninit()
 {
 	pthread_mutex_destroy(&mutex);
 }
 
 
-void BufferPipe::Create(uint32_t _size, uint32_t _flag)
+void BufferPipeImpl::Create(uint32_t _size, uint32_t _flag)
 {
 	if (_size <= 0)
 	{
@@ -61,7 +107,7 @@ failed:
 }
 
 
-void BufferPipe::Destory()
+void BufferPipeImpl::Destory()
 {
 	pthread_mutex_lock(&mutex);
 	if (created)
@@ -70,10 +116,12 @@ void BufferPipe::Destory()
 		this->created = false;
 	}
 	pthread_mutex_unlock(&mutex);
+
+	delete this;
 }
 
 
-uint32_t BufferPipe::Write(const void * data, uint32_t len)
+uint32_t BufferPipeImpl::Write(const void * data, uint32_t len)
 {
 	if (data==NULL || len<=0)
 	{
@@ -109,7 +157,7 @@ uint32_t BufferPipe::Write(const void * data, uint32_t len)
 }
 
 
-uint32_t BufferPipe::Read(void * data, uint32_t len)
+uint32_t BufferPipeImpl::Read(void * data, uint32_t len)
 {
 	if (data == NULL || len <= 0)
 	{

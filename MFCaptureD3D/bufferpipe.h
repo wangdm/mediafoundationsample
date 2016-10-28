@@ -4,32 +4,12 @@ class BufferPipe
 {
 
 public:
-    BufferPipe();
-    ~BufferPipe();
 
-	void Create(uint32_t _size, uint32_t _flag);
-	void Destory();
+	static BufferPipe * Create(uint32_t _size, uint32_t _flag);
+	virtual void Destory() = 0;
 
-	uint32_t Write(const void * data, uint32_t len);
-	uint32_t Read(void * data, uint32_t len);
+	virtual uint32_t Write(const void * data, uint32_t len) = 0;
+	virtual uint32_t Read(void * data, uint32_t len) = 0;
 
-private:
-	void Init();
-	void Uninit();
-
-private:
-	bool created = false;
-
-	void * head;
-	void * tail;
-	uint32_t size;
-	uint32_t length;
-
-	void * rptr;
-	void * wptr;
-
-	uint32_t flag;
-
-	pthread_mutex_t mutex;
 };
 
