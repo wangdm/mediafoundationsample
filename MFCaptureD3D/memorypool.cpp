@@ -192,7 +192,7 @@ uint32_t MemoryPoolImpl::GetWritePtr(void **p, uint32_t size)
 void MemoryPoolImpl::CheckReader(uint32_t size)
 {
     pthread_mutex_lock(&readmutex);
-    for (std::list<MemoryReader *>::iterator iter = readerList.begin; iter != readerList.end(); ++iter)
+    for (std::list<MemoryReader *>::iterator iter = readerList.begin(); iter != readerList.end(); ++iter)
     {
         MemoryReaderImpl* reader = (MemoryReaderImpl*)*iter;
         bufferhead* head = (bufferhead*)reader->rptr;
