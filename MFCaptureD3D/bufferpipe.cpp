@@ -1,13 +1,11 @@
 
-extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <pthread.h>
-}
 
 #include "bufferpipe.h"
-
 
 
 class BufferPipeImpl : public BufferPipe

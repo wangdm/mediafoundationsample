@@ -2,10 +2,11 @@
 #include <vector>
 #include <queue>
 
-using namespace std;
+#include <pthread.h>
 
-#include "MFCaptureD3D.h"
 #include "bufferpool.h"
+
+using namespace std;
 
 
 class BufferImpl : public Buffer
