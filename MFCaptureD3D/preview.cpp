@@ -74,6 +74,7 @@ CPreview::CPreview(HWND hVideo, HWND hEvent) :
 	m_swsContext(NULL),
     m_srcFrame(NULL),
     m_dstFrame(NULL),
+	m_videoPool(NULL),
     h264file(NULL),
     yuvfile(NULL)
 {

@@ -65,5 +65,7 @@ protected:
 
     BOOL					m_bAACRecordStatus = FALSE;
     BOOL					m_bPCMRecordStatus = FALSE;
+
+    BufferPipe				*m_audioPipe;
 };
 

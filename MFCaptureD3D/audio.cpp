@@ -11,6 +11,7 @@ CAudio::CAudio() :
 	m_swrContext(NULL),
     m_srcFrame(NULL),
     m_dstFrame(NULL),
+	m_audioPipe(NULL),
     aacfile(NULL),
     pcmfile(NULL)
 {
@@ -508,6 +509,8 @@ HRESULT CAudio::InitCodec() {
 		}
 	}
 
+	m_audioPipe = BufferPipe::Create(sample_size*20, 0);
+
     return hr;
 }
 
@@ -554,6 +557,12 @@ void CAudio::UninitCodec() {
         delete pcmfile;
         pcmfile = NULL;
     }
+
+	if (m_audioPipe)
+	{
+		m_audioPipe->Destory();
+		m_audioPipe = NULL;
+	}
 }
 
 

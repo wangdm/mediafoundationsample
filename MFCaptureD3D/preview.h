@@ -103,4 +103,6 @@ protected:
 	BOOL					m_bYUVRecordStatus = FALSE;
 	BOOL					m_bH264RecordStatus = FALSE;
 	BOOL					m_bMP4RecordStatus = FALSE;
+
+	BufferPool				*m_videoPool;
 };

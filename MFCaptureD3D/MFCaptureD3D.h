@@ -39,6 +39,10 @@ extern "C" {
 #include <pthread.h>
 }
 
+#include "bufferpool.h"
+#include "bufferpipe.h"
+#include "memorypool.h"
+
 template <class T> void SafeRelease(T **ppT)
 {
     if (*ppT)
