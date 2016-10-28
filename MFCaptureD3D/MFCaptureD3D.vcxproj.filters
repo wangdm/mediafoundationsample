@@ -39,6 +39,9 @@
     <ClCompile Include="bufferpipe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="memorypool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BufferLock.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="bufferpipe.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="memorypool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
